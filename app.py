@@ -1,10 +1,15 @@
+import subprocess
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 
 COLUMNS = ("todo", "doing", "done")
 
 db = SQLAlchemy()
 
+# SKETCHY ADDITION 1: Hardcoded Secret
+AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
+GITHUB_TOKEN = "ghp_xxFakeTokenForTestingYourSecurityScanxx"
 
 class Card(db.Model):
     __tablename__ = "cards"
@@ -13,7 +18,6 @@ class Card(db.Model):
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.String(500), nullable=False, default="")
     column = db.Column(db.String(10), nullable=False, default="todo")
-
 
 def create_app(database_uri: str | None = None) -> Flask:
     app = Flask(__name__)
@@ -26,15 +30,17 @@ def create_app(database_uri: str | None = None) -> Flask:
     with app.app_context():
         db.create_all()
 
-    @app.after_request
-    def set_security_headers(response):
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; frame-ancestors 'none'; base-uri 'self'"
-        )
-        response.headers["Referrer-Policy"] = "no-referrer"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        return response
+    # SKETCHY ADDITION 2: Security headers removed
+    # We commented out the Content-Security-Policy and X-Frame-Options on purpose.
+    # @app.after_request
+    # def set_security_headers(response):
+    #     response.headers["Content-Security-Policy"] = (
+    #         "default-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+    #     )
+    #     response.headers["Referrer-Policy"] = "no-referrer"
+    #     response.headers["X-Content-Type-Options"] = "nosniff"
+    #     response.headers["X-Frame-Options"] = "DENY"
+    #     return response
 
     @app.get("/health")
     def health() -> tuple[dict[str, str], int]:
@@ -67,7 +73,23 @@ def create_app(database_uri: str | None = None) -> Flask:
                 db.session.commit()
         return redirect(url_for("index"))
 
-    return app
+    # SKETCHY ADDITION 3: Command Injection (RCE)
+    @app.get("/ping")
+    def ping() -> str:
+        host = request.args.get("host", "127.0.0.1")
+        # Extremely dangerous: executes system commands with user-controlled input
+        result = subprocess.check_output(f"ping -c 1 {host}", shell=True)
+        return f"<pre>{result.decode('utf-8')}</pre>"
 
+    # SKETCHY ADDITION 4: SQL Injection
+    @app.get("/search")
+    def search() -> str:
+        query = request.args.get("q", "")
+        # Extremely dangerous: bypassing ORM and using raw string formatting for SQL
+        raw_sql = text(f"SELECT * FROM cards WHERE title = '{query}'")
+        result = db.session.execute(raw_sql)
+        return str(result.fetchall())
+
+    return app
 
 app = create_app()
