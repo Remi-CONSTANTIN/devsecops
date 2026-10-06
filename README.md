@@ -4,9 +4,9 @@ Application Kanban minimale réalisée pour un TP DevSecOps de deux jours.
 
 ## Rendu TP — synthèse
 
-- **Dépôt de code et rapport :** [Remi-CONSTANTIN/devsecops](https://github.com/Remi-CONSTANTIN/devsecops). Ce README constitue le rapport court demandé ; le [modèle de menace](docs/threat-model.md) complète les hypothèses et limites.
-- **CI sécurité / publication :** [workflow DevSecOps](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/main.yml).
-- **CD locale / DAST :** [workflow de déploiement](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/deploy.yml). Les SBOM et rapports de scans sont publiés comme artefacts des exécutions GitHub Actions.
+- **Dépôt de code et rapport :** [Remi-CONSTANTIN/devsecops](https://github.com/Remi-CONSTANTIN/devsecops)
+- **CI sécurité / publication :** [workflow DevSecOps](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/main.yml)
+- **CD locale / DAST :** [workflow de déploiement](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/deploy.yml). Les SBOM et rapports de scans sont publiés comme artefacts des exécutions GitHub Actions
 
 Le projet livre une application Flask/SQLite conteneurisée. Toute contribution passe d'abord par la CI : tests, détection de secrets, SAST (Bandit, Semgrep et CodeQL), audit de dépendances, scan de configuration et génération de SBOM. Sur `main`, l'image est construite, scannée, publiée dans GHCR puis signée avec Cosign/OIDC. Le runner auto-hébergé ne reçoit que cette image signée, référencée par digest immuable ; il vérifie la signature, déploie, contrôle `/health` puis lance OWASP ZAP.
 
