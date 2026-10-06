@@ -22,6 +22,16 @@ Les PR internes passent en squash merge automatiquement quand les contrôles son
 
 Ce montage réduit les risques, mais il ne transforme pas un scan en revue humaine. Les outils détectent bien des secrets, dépendances vulnérables ou appels suspects. Ils ne savent pas toujours déterminer si une modification apparemment normale cache une mauvaise intention. Le runner séparé et la vérification de signature limitent les conséquences, mais ce déploiement sur le port `8000` reste une démonstration de TP, pas une configuration de production.
 
+### Retour d'expérience GitLab : quatre gates contournés par leur configuration
+
+Le test est documenté dans la [MR GitLab !3](https://gitlab.com/parthenox-group/jellyfin-secure-delivery/-/merge_requests/3). Une seule MR, sans modification du code applicatif, a suffi à neutraliser quatre contrôles : Gitleaks, Semgrep, Trivy filesystem et Trivy image.
+
+Le problème est simple : les jobs prennent leurs fichiers de configuration dans la branche qu'ils sont censés auditer. La MR ajoute donc `.gitleaks.toml` avec une allowlist globale, `.semgrepignore` avec `*`, `.trivyignore` qui ignore 94 CVE et `trivy-secret.yaml` qui désactive deux règles de secrets. Les quatre jobs passent alors au vert. Dans le même temps, la charge de démonstration `k8s/db-credentials.yaml`, contenant une clé privée et des identifiants de production, n'est plus signalée.
+
+Le rejet des résultats est parlant : sans ces fichiers, Gitleaks détecte les clés privées, Semgrep retourne six findings et Trivy échoue sur les vulnérabilités et secrets. Avec eux, les mêmes commandes renvoient un succès. Le dépôt contenait aussi déjà une clé privée dans `config.env`, huit vulnérabilités HIGH dans les dépendances Python, une image exécutée en root et un conteneur Kubernetes privilégié. Le renommage du job `trivy-iac` en `trivy-fs` avait par ailleurs fait disparaître le scan de configuration sans faire échouer la pipeline.
+
+La correction est de sortir la configuration des scanners de la branche auditée : la CI doit fournir ses propres fichiers de règles et d'exclusion. Les fichiers `*.toml`, `.*ignore` et `trivy-*.yaml` doivent aussi être protégés par `CODEOWNERS` et approbation obligatoire. Enfin, GitLab doit activer `only_allow_merge_if_pipeline_succeeds`, aujourd'hui désactivé sur ce projet, et comparer les exclusions présentes dans le dépôt à une baseline signée. Il faut aussi remettre un scan de manifestes avec `trivy config` ou `trivy fs --scanners misconfig`.
+
 ## Fonctions
 
 - Trois colonnes : **À faire**, **En cours**, **Terminé**.
