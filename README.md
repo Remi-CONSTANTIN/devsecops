@@ -2,22 +2,25 @@
 
 Application Kanban minimale réalisée pour un TP DevSecOps de deux jours.
 
-## Rendu TP — synthèse
+## Rendu du TP
 
-- **Dépôt de code et rapport :** [Remi-CONSTANTIN/devsecops](https://github.com/Remi-CONSTANTIN/devsecops)
-- **CI sécurité / publication :** [workflow DevSecOps](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/main.yml)
-- **CD locale / DAST :** [workflow de déploiement](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/deploy.yml). Les SBOM et rapports de scans sont publiés comme artefacts des exécutions GitHub Actions
+Le code, la configuration et ce court compte rendu sont dans ce dépôt : [Remi-CONSTANTIN/devsecops](https://github.com/Remi-CONSTANTIN/devsecops).
 
-Le projet livre une application Flask/SQLite conteneurisée. Toute contribution passe d'abord par la CI : tests, détection de secrets, SAST (Bandit, Semgrep et CodeQL), audit de dépendances, scan de configuration et génération de SBOM. Sur `main`, l'image est construite, scannée, publiée dans GHCR puis signée avec Cosign/OIDC. Le runner auto-hébergé ne reçoit que cette image signée, référencée par digest immuable ; il vérifie la signature, déploie, contrôle `/health` puis lance OWASP ZAP.
+- La [pipeline CI](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/main.yml) lance les tests et les contrôles de sécurité, puis construit et publie l'image si la branche est `main`.
+- La [pipeline de déploiement](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/deploy.yml) récupère cette image, la vérifie et la déploie localement. Elle lance aussi un contrôle de santé et un scan OWASP ZAP.
+- Les SBOM et les rapports de scan restent disponibles dans les artefacts GitHub Actions. Le [modèle de menace](docs/threat-model.md) explique les choix et ce qu'ils ne couvrent pas.
 
-### Règles Git et workflows de travail
+L'application est volontairement simple : Flask, SQLite et Docker. L'idée du TP était surtout de sécuriser ce qui l'entoure. Chaque pull request passe par les tests, Gitleaks, Bandit, Semgrep, CodeQL, l'audit des dépendances et les scans de configuration. Sur `main`, l'image est scannée, envoyée dans GHCR et signée avec Cosign via OIDC. Le runner de déploiement n'accepte ensuite qu'une image signée et identifiée par son digest, pas un tag que quelqu'un pourrait déplacer.
 
-- `main` est protégée : passage par pull request et contrôles CI requis avant intégration ; les pushes directs, la suppression et le force-push sont bloqués.
-- Les workflows et `CODEOWNERS` sont des chemins sensibles détenus par les collaborateurs désignés. Une contribution externe peut proposer du code, mais ne doit pas faire exécuter un workflow qu'elle contrôle avec des privilèges d'écriture ou l'accès au runner local.
-- Les PR internes peuvent être fusionnées automatiquement en squash après succès des contrôles. Les PR provenant d'un fork ne sont éligibles à l'auto-merge que depuis un workflow de confiance défini sur `main`, et uniquement si elles ne modifient que `app.py`, `templates/**`, `static/**` ou `tests/**` ; les workflows, dépendances, Docker et la politique de sécurité sont exclus.
-- Les permissions GitHub Actions suivent le moindre privilège : lecture par défaut ; écriture de paquet et jeton OIDC uniquement pour la publication/signature, écriture de PR uniquement pour l'auto-merge.
+### Règles de travail
 
-**Limite assumée du TP :** des contrôles automatisés réduisent le risque mais ne prouvent pas l'intention métier d'un changement. La revue des chemins sensibles, l'isolation du runner et la vérification de signature restent nécessaires ; le service exposé sur le port `8000` n'est pas une configuration de production.
+`main` est protégée : pas de push direct, pas de force-push et pas de suppression. Les changements passent par une pull request et les contrôles doivent réussir avant intégration.
+
+Les fichiers de workflow et `CODEOWNERS` sont traités à part. Seuls les collaborateurs prévus peuvent les valider. Une contribution externe peut proposer du code applicatif, mais elle ne peut pas faire tourner un workflow qu'elle a elle-même modifié avec des droits d'écriture ou sur le runner local.
+
+Les PR internes passent en squash merge automatiquement quand les contrôles sont verts. Pour un fork, l'auto-merge est plus limité : un workflow de confiance, défini sur `main`, vérifie que seuls `app.py`, `templates/**`, `static/**` ou `tests/**` ont changé. Les dépendances, Docker, les workflows et les règles de sécurité restent exclus. Les permissions GitHub Actions sont en lecture par défaut ; les droits d'écriture sont donnés uniquement au job qui en a besoin.
+
+Ce montage réduit les risques, mais il ne transforme pas un scan en revue humaine. Les outils détectent bien des secrets, dépendances vulnérables ou appels suspects. Ils ne savent pas toujours déterminer si une modification apparemment normale cache une mauvaise intention. Le runner séparé et la vérification de signature limitent les conséquences, mais ce déploiement sur le port `8000` reste une démonstration de TP, pas une configuration de production.
 
 ## Fonctions
 
