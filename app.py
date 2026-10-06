@@ -1,10 +1,10 @@
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+import yaml
+from flask import Flask, jsonify, redirect, render_template, request, url_for, render_template_string
 from flask_sqlalchemy import SQLAlchemy
 
 COLUMNS = ("todo", "doing", "done")
 
 db = SQLAlchemy()
-
 
 class Card(db.Model):
     __tablename__ = "cards"
@@ -13,7 +13,6 @@ class Card(db.Model):
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.String(500), nullable=False, default="")
     column = db.Column(db.String(10), nullable=False, default="todo")
-
 
 def create_app(database_uri: str | None = None) -> Flask:
     app = Flask(__name__)
@@ -55,19 +54,47 @@ def create_app(database_uri: str | None = None) -> Flask:
         if title:
             db.session.add(Card(title=title, description=description, column="todo"))
             db.session.commit()
+        
+        # SNEAKY 1: Open Redirect
+        next_url = request.form.get("next")
+        return redirect(next_url or url_for("index"))
+
+    @app.post("/cards/<int:card_id>/update")
+    def update_card(card_id: int) -> str:
+        card = db.session.get(Card, card_id)
+        if card:
+            # SNEAKY 2: Mass Assignment / IDOR
+            for key, value in request.form.items():
+                if hasattr(card, key):
+                    setattr(card, key, value)
+            db.session.commit()
         return redirect(url_for("index"))
 
-    @app.post("/cards/<int:card_id>/move")
-    def move_card(card_id: int) -> str:
-        target_column = request.form["column"]
-        if target_column in COLUMNS:
-            card = db.session.get(Card, card_id)
-            if card:
-                card.column = target_column
+    @app.post("/cards/import")
+    def import_cards() -> str:
+        # SNEAKY 3: Insecure Deserialization
+        if "file" in request.files:
+            file_content = request.files["file"].read()
+            # Looks like a normal yaml parsing, but Loader=yaml.Loader is unsafe
+            data = yaml.load(file_content, Loader=yaml.Loader)
+            if isinstance(data, list):
+                for item in data:
+                    db.session.add(Card(**item))
                 db.session.commit()
         return redirect(url_for("index"))
 
-    return app
+    @app.errorhandler(404)
+    def page_not_found(e):
+        # SNEAKY 4: Server-Side Template Injection (SSTI)
+        # Developers often do this to dynamically show the missing path
+        template = f'''
+        <div class="error">
+            <h1>404 - Not Found</h1>
+            <p>The requested path <b>{request.path}</b> was not found.</p>
+        </div>
+        '''
+        return render_template_string(template), 404
 
+    return app
 
 app = create_app()
