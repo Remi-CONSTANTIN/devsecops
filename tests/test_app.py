@@ -64,3 +64,11 @@ def test_user_can_move_a_card_to_another_column(tmp_path):
     with sqlite3.connect(database) as connection:
         card_column = connection.execute("SELECT column FROM cards WHERE id = 1").fetchone()[0]
     assert card_column == "doing"
+
+
+def test_demo_pipeline_blocks_an_incorrect_health_contract(tmp_path):
+    """Démonstration : ce test est volontairement faux et doit échouer en CI."""
+    app = create_app(database_uri=f"sqlite:///{tmp_path / 'kanban.db'}")
+    response = app.test_client().get("/health")
+
+    assert response.status_code == 418
