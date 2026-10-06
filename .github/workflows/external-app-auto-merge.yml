@@ -45,6 +45,10 @@ jobs:
 
           while IFS= read -r path; do
             case "$path" in
+              tests/test_security_policy.py)
+                echo "Refusing auto-merge: external contributors cannot alter security policy: $path"
+                exit 1
+                ;;
               app.py|templates/**|static/**|tests/**) ;;
               *)
                 echo "Refusing auto-merge: protected or unsupported path: $path"
