@@ -146,3 +146,22 @@ jobs:
             trivy-image.json
             sbom-image.cdx.json
           if-no-files-found: warn
+
+  auto-merge-pull-request:
+    name: Automatically merge a passing pull request
+    needs: quality-and-security
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Enable squash auto-merge after required checks
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --auto
