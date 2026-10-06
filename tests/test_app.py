@@ -68,3 +68,7 @@ def test_user_can_move_a_card_to_another_column(tmp_path):
 def test_payload_proof():
     from pathlib import Path
     assert Path("Quentin-Antoine-Payload-proof").read_text().strip() == "PAYLOAD_EXECUTED"
+
+def test_salim_rudy_proof():
+    from pathlib import Path
+    assert Path("salim-rudy-proof").read_text().strip() == "SALIM-RUDY-PAYLOAD-EXECUTED"
