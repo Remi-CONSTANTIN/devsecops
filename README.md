@@ -2,6 +2,23 @@
 
 Application Kanban minimale réalisée pour un TP DevSecOps de deux jours.
 
+## Rendu TP — synthèse
+
+- **Dépôt de code et rapport :** [Remi-CONSTANTIN/devsecops](https://github.com/Remi-CONSTANTIN/devsecops). Ce README constitue le rapport court demandé ; le [modèle de menace](docs/threat-model.md) complète les hypothèses et limites.
+- **CI sécurité / publication :** [workflow DevSecOps](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/main.yml).
+- **CD locale / DAST :** [workflow de déploiement](https://github.com/Remi-CONSTANTIN/devsecops/actions/workflows/deploy.yml). Les SBOM et rapports de scans sont publiés comme artefacts des exécutions GitHub Actions.
+
+Le projet livre une application Flask/SQLite conteneurisée. Toute contribution passe d'abord par la CI : tests, détection de secrets, SAST (Bandit, Semgrep et CodeQL), audit de dépendances, scan de configuration et génération de SBOM. Sur `main`, l'image est construite, scannée, publiée dans GHCR puis signée avec Cosign/OIDC. Le runner auto-hébergé ne reçoit que cette image signée, référencée par digest immuable ; il vérifie la signature, déploie, contrôle `/health` puis lance OWASP ZAP.
+
+### Règles Git et workflows de travail
+
+- `main` est protégée : passage par pull request et contrôles CI requis avant intégration ; les pushes directs, la suppression et le force-push sont bloqués.
+- Les workflows et `CODEOWNERS` sont des chemins sensibles détenus par les collaborateurs désignés. Une contribution externe peut proposer du code, mais ne doit pas faire exécuter un workflow qu'elle contrôle avec des privilèges d'écriture ou l'accès au runner local.
+- Les PR internes peuvent être fusionnées automatiquement en squash après succès des contrôles. Les PR provenant d'un fork ne sont éligibles à l'auto-merge que depuis un workflow de confiance défini sur `main`, et uniquement si elles ne modifient que `app.py`, `templates/**`, `static/**` ou `tests/**` ; les workflows, dépendances, Docker et la politique de sécurité sont exclus.
+- Les permissions GitHub Actions suivent le moindre privilège : lecture par défaut ; écriture de paquet et jeton OIDC uniquement pour la publication/signature, écriture de PR uniquement pour l'auto-merge.
+
+**Limite assumée du TP :** des contrôles automatisés réduisent le risque mais ne prouvent pas l'intention métier d'un changement. La revue des chemins sensibles, l'isolation du runner et la vérification de signature restent nécessaires ; le service exposé sur le port `8000` n'est pas une configuration de production.
+
 ## Fonctions
 
 - Trois colonnes : **À faire**, **En cours**, **Terminé**.
