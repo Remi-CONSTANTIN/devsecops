@@ -1,0 +1,3 @@
+# Seul le mainteneur du dépôt peut approuver les changements de la chaîne CI/CD.
+/.github/CODEOWNERS @Remi-CONSTANTIN
+/.github/workflows/** @Remi-CONSTANTIN
